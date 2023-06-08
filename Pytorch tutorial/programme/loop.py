@@ -1,6 +1,12 @@
 import torch
 
 def train(trainloader, net, optimizer, loss):
+    ''' 
+    Permet d'entrainer à partir d'un DataLoader 
+    (trainloader) un réseau (net) en utilisant 
+    la fonction de perte loss.
+    
+    '''
     net.train()
     for batch, (X,label) in enumerate(trainloader):
         optimizer.zero_grad()
@@ -13,6 +19,11 @@ def train(trainloader, net, optimizer, loss):
                   f'Avancée : [{(batch+1)*len(X)}/{len(trainloader.dataset)}]')
 
 def test(testloader, net):
+    '''
+    Permet de tester le réseau net avec Dataloader test.
+    Affiche la précision du modèle en sortie.
+    
+    '''
     correct = 0
     tot = len(testloader.dataset)
     net.eval()
