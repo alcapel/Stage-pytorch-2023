@@ -8,15 +8,30 @@ def train(trainloader, net, optimizer, loss):
     
     '''
     net.train()
+    loss_e = 0
     for batch, (X,label) in enumerate(trainloader):
         optimizer.zero_grad()
-        logits = net(X)
+        logits = net(X.float())
         lossRes = loss(logits, label)
+        loss_e += lossRes.item()
         lossRes.backward()
         optimizer.step()
-        if batch%100==0 :
+        if batch%20==0 :
             print(f'Perte = {lossRes.item()} ',
                   f'Avancée : [{(batch+1)*len(X)}/{len(trainloader.dataset)}]')
+    return loss_e/len(trainloader)
+
+def val(valloader, net, loss):
+    net.eval()
+    loss_e = 0
+    with torch.no_grad():
+        for batch, (X,y) in enumerate(valloader):
+            logits = net(X.float())
+            loss_e += loss(logits, y).item()
+    return loss_e/len(valloader)
+
+
+
 
 def test(testloader, net):
     '''
@@ -29,6 +44,6 @@ def test(testloader, net):
     net.eval()
     with torch.no_grad():
         for (X,y) in testloader:
-            pred = net(X)
+            pred = net(X).logits
             correct += (pred.argmax(1) == y).type(torch.float).sum().item()
     print(f"Précision du modèle : {100*(correct/tot)}%\n")

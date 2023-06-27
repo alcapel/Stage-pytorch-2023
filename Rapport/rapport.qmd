@@ -1,10 +1,11 @@
 ---
-title: "matplotlib demo"
+title: "Rapport stage d'été 2023"
 format:
   html:
     toc: true
+    theme: [slate, sass_variable.scss]
     html-math-method: katex
-    css: styles.css
+
   pdf: 
     documentclass: report
     classoption: [twocolumn, landscape]
@@ -16,30 +17,17 @@ format:
       - heightrounded
     fontfamily: libertinus
     colorlinks: true
-
+navbar: true
 toc: true
 toc-depth: 2
 toc-title: Contents
 jupyter: python3
 ---
-# Yes
-## Ok
-For a demonstration of a line plot on a polar axis, see @fig-polar.
+Voici le rapport du stage effectué en Juin et Juillet 2023 à l'Institut Montpelliérain Alexander Grothendieck. Ce dernier va se découper en deux grosses parties :
 
-```{python}
-#| label: fig-polar
-#| fig-cap: "A line plot on a polar axis"
+- la première visant à rappeler et expliqué un article de crowdsourcing [1].
+- la seconde portera plus sur l'implémentation de la méthode de l'article à l'aide du package <a href="https://peerannot.github.io/">Peerannot</a>.
 
-import numpy as np
-import matplotlib.pyplot as plt
+# Description de la méthode
+## Mise en contexte 
 
-r = np.arange(0, 2, 0.01)
-theta = 2 * np.pi * r
-fig, ax = plt.subplots(
-  subplot_kw = {'projection': 'polar'} 
-)
-ax.plot(theta, r)
-ax.set_rticks([0.5, 1, 1.5, 2])
-ax.grid(True)
-plt.show()
-```
