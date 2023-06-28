@@ -18,16 +18,95 @@ format:
     fontfamily: libertinus
     colorlinks: true
 navbar: true
+bibliography: biblio.bib
+number-sections: true
 toc: true
 toc-depth: 2
-toc-title: Contents
+toc-title: Sommaire
 jupyter: python3
 ---
-Voici le rapport du stage effectué en Juin et Juillet 2023 à l'Institut Montpelliérain Alexander Grothendieck. Ce dernier va se découper en deux grosses parties :
+&nbsp; &nbsp; Voici le rapport du stage effectué en Juin et Juillet 2023 à l'Institut Montpelliérain Alexander Grothendieck. Ce dernier va se découper en deux grosses parties :
 
-- la première visant à rappeler et expliqué un article de crowdsourcing [1].
-- la seconde portera plus sur l'implémentation de la méthode de l'article à l'aide du package <a href="https://peerannot.github.io/">Peerannot</a>.
+- la première visant à rappeler et expliqué un article de crowdsourcing [@guan2018said].
+- la seconde portera plus sur l'implémentation de la méthode de l'article à l'aide du package [Peerannot](https://peerannot.github.io/).
 
-# Description de la méthode
-## Mise en contexte 
+## Explication de l'article Who Said What [@guan2018said]
+### Mise en contexte 
 
+&nbsp; &nbsp; Il arrive souvent qu'une donnée ne soit pas perçue de la même manière d'un travailleur à l'autre. Cela peut dépendre de plusieurs paramètres comme par exemple :
+
+ - l'expérience des travailleurs et leur fiabilité
+ - la qualité des données : nombre de pixels dans une image par exemple.
+
+
+Dans le dataset CIFAR10H, où chaque image appartient à un ensemble de 10 classes disjointes, il peut arriver qu'il nous soit difficile de choisir entre deux classes. 
+
+![Figure 1](image_cifar10h.png){width=200}
+
+Un cas concret où la labélisation d'une image n'est pas évidente, c'est lorsque l'on doit effectuer un diagnositic médical. Dans [@guan2018said], on se place dans un cadre un groupe de médecins étiquettent des dépistages  de la rétinopathie diabétique (diabetic retinopathy, DR) en cinq classes différentes : 
+
+- Pas de DR 
+- DR bénin (non proliférative)
+- DR moyen
+- DR sévère
+- DR proliferative
+
+IMAGE DES DIFFERENTES CLASSES
+
+
+Chaque image sera traité par une petite partie de ce groupe de médecin (aléatoirement) et chaque médecin va étudier une petite partie de l'ensemble des dépistages.
+
+On peut facilement se persuader ici que chaque expert va donner son propre diagnostic (éventuellement différents les uns des autres) du fait du potentiel bruit qui se trouve dans ces images.
+
+C'est dans ce cadre que [@guan2018said] va chercher à trouver un "véritable" diagnostic, que l'on utilisera ensuite pour entraîner notre modèle. 
+
+### Modèle de crowdsourcing
+
+&nbsp; &nbsp; Pour répondre à la problématique, [WsW] ont d'abord fixé leur modèle. Dans le cadre des médecins, ils vont modéliser chacun d'eux avec la base d'Inception-v3 qu'ils vont ensuite entraîner avec les opinions du médecin qu'il modélise.
+Par exemple, si le dataset comporte un jeu de données où le total des médecins ayant étiqueté au moins une image est de 31, nous devrons entraîner 31 modèles. 
+
+On voit assez rapidement, qu'en fonction du nombre d'expert du jeu de données, la mise en place du modèle sera plus au moins longue... De plus, on peut potentiellement être confronté à un nombre de donnée trop bas pour certains médecins. Ces contraintes sont à prendre en compte dans un tel modèle.
+
+
+### Exemples de statégie pour fusionner les opinions
+
+
+&nbsp; &nbsp; Une fois que nous possèdons tout ces médecins modélisés, il va falloir réunir l'ensemble de leur opinion pour pouvoir en proposer une globale pour le modèle général et étiqueter de nouvelles données. Il y a des manières très intuitives que nous allons exposer ici.
+
+On se place dans le cas où il y a N experts et C classes. On notera $p_j(c)$ la prédiction de la classe $c$ du modèle représentant l'expert $j$.
+
+#### **Le vote majoritaire**
+
+&nbsp; &nbsp; Ce cadre là est assez explicite. L'idée est d'organiser un vote des experts et sélectionner la classe ayant le plus de voix. Mathématiquement, si on note $\hat{p}_j =\underset{c \in \llbracket 1,C \rrbracket}{\text{argmax}}~(p_j(c))$, alors la prédiction du modèle sera :
+$$
+\hat{Y}_c =  \frac{1}{N}\sum_{j=1}^{N} \mathbb{1}_{\hat{p}_j=c}
+$$
+
+Ici, la classe ayant la probabilité la plus haute sera celle ayant reçu le plus de voix.
+
+
+#### **L'expert moyen**
+
+&nbsp; &nbsp; Ce paradigme est sûrement le plus simple et évident de la liste. Il consiste à utiliser les prédictions de chaque expert et de faire une moyenne en utilisant un poids uniforme pour chaque expert. On peut le calculer :
+
+$$
+Y_c = \frac{1}{N}\sum_{j=1}^{N}p_j(c)
+$$
+
+Il modélise ce qu'est censé dire un expert "moyen" (par rapport à l'ensemble des experts du modèle).
+
+#### **Pondérer en fonction de la fiabilité**
+
+### Méthode de [WsW]
+
+
+### Pourquoi les erreurs des experts ne posent pas de problème
+
+## Implémentation avec Peerannot
+
+
+
+
+
+
+PARLER DU PROBLEME AVEC LE BATCH FINAL QUI VAUT 1 (avec BN1 ça marche pas)
