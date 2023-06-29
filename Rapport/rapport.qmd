@@ -5,19 +5,7 @@ format:
     toc: true
     theme: [slate, sass_variable.scss]
     html-math-method: katex
-
-  pdf: 
-    documentclass: report
-    classoption: [twocolumn, landscape]
-    lof: true
-    lot: true
-    geometry:
-      - top=30mm
-      - left=20mm
-      - heightrounded
-    fontfamily: libertinus
-    colorlinks: true
-navbar: true
+    
 bibliography: biblio.bib
 number-sections: true
 toc: true
@@ -97,7 +85,28 @@ Il modélise ce qu'est censé dire un expert "moyen" (par rapport à l'ensemble 
 
 #### **Pondérer en fonction de la fiabilité**
 
-### Méthode de [WsW]
+&nbsp; &nbsp; On peut assez rapidement constater que la stratégie précédente est assez rudimentaire. En effet, on pourrait lui reprocher de ne pas prendre en compte la fiabilité de l'expert : un médécin assez médiocre (si il y en a un) possèdera un poids égal à celui d'un expert excellent. On voudrait donc trouver un moyen de donner un poids plus important aux médecins plus fiable, on obtiendra alors une prédiction de la forme :
+
+$$
+Y_c = \sum_{j=1}^{N}w_jp_j(c) ~~~~~~~\text{où  } \sum_{j=1}^{N}w_j=1
+$$
+
+Un premier moyen de procédé est de se référer à un score de fiabilité qu'aurait chacun des experts et de baser les poids sur ces résultats là. Un score possible serait par exemple de regarder avec un dataset de test le nombre de bonne réponse que donne chacun des modèles. Si on note $sc_j$ le score du modèle $j$ par rapport au dataset de test, on posera :
+
+$$
+w_j = \frac{sc_j}{\sum_{k=1}^{N}sc_k} 
+$$
+
+
+### Méthode de [@guan2018said]
+
+&nbsp; &nbsp; La méthode de [@guan2018said] se base sur ce paradigme mais propose un calcul des poids différents. Ici, plutôt que de calculer séparément les poids $w_j$, nous allons les entraîner comme un modèle classique, en utilisant un descente de gradient et une fonction de perte. La différence principale avec la méthode précédente est qu'elle permet de faire un lien entre les différents experts. Dans un tel cadre, même si un modèle possède les mêmes performances que les autres mais que ce dernier fait des erreurs très différentes, alors ça aura tendance à augmenter son poids car il sera plus utile au moment de faire la moyenne.
+
+Mais comment procéder ?
+
+Supposons que nous avons déja entainé nos $N$ modèles représentant chaque expert. 
+
+
 
 
 ### Pourquoi les erreurs des experts ne posent pas de problème
