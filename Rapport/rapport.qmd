@@ -5,7 +5,8 @@ format:
     toc: true
     theme: [slate, sass_variable.scss]
     html-math-method: katex
-    
+
+css: styles.css    
 bibliography: biblio.bib
 number-sections: true
 toc: true
@@ -13,6 +14,7 @@ toc-depth: 2
 toc-title: Sommaire
 jupyter: python3
 ---
+
 &nbsp; &nbsp; Voici le rapport du stage effectué en Juin et Juillet 2023 à l'Institut Montpelliérain Alexander Grothendieck. Ce dernier va se découper en deux grosses parties :
 
 - la première visant à rappeler et expliqué un article de crowdsourcing [@guan2018said].
@@ -29,7 +31,7 @@ jupyter: python3
 
 Dans le dataset CIFAR10H, où chaque image appartient à un ensemble de 10 classes disjointes, il peut arriver qu'il nous soit difficile de choisir entre deux classes. 
 
-![Figure 1](image_cifar10h.png){width=200}
+![Chat ou chien ?](image_cifar10h.png){#Essayons .figure-title width=200}
 
 Un cas concret où la labélisation d'une image n'est pas évidente, c'est lorsque l'on doit effectuer un diagnositic médical. Dans [@guan2018said], on se place dans un cadre un groupe de médecins étiquettent des dépistages  de la rétinopathie diabétique (diabetic retinopathy, DR) en cinq classes différentes : 
 
@@ -50,7 +52,7 @@ C'est dans ce cadre que [@guan2018said] va chercher à trouver un "véritable" d
 
 ### Modèle de crowdsourcing
 
-&nbsp; &nbsp; Pour répondre à la problématique, [WsW] ont d'abord fixé leur modèle. Dans le cadre des médecins, ils vont modéliser chacun d'eux avec la base d'Inception-v3 qu'ils vont ensuite entraîner avec les opinions du médecin qu'il modélise.
+&nbsp; &nbsp; Pour répondre à la problématique, [@guan2018said] ont d'abord fixé leur modèle. Dans le cadre des médecins, ils vont modéliser chacun d'eux avec la base d'Inception-v3 qu'ils vont ensuite entraîner avec les opinions du médecin qu'il modélise.
 Par exemple, si le dataset comporte un jeu de données où le total des médecins ayant étiqueté au moins une image est de 31, nous devrons entraîner 31 modèles. 
 
 On voit assez rapidement, qu'en fonction du nombre d'expert du jeu de données, la mise en place du modèle sera plus au moins longue... De plus, on peut potentiellement être confronté à un nombre de donnée trop bas pour certains médecins. Ces contraintes sont à prendre en compte dans un tel modèle.
@@ -61,7 +63,7 @@ On voit assez rapidement, qu'en fonction du nombre d'expert du jeu de données, 
 
 &nbsp; &nbsp; Une fois que nous possèdons tout ces médecins modélisés, il va falloir réunir l'ensemble de leur opinion pour pouvoir en proposer une globale pour le modèle général et étiqueter de nouvelles données. Il y a des manières très intuitives que nous allons exposer ici.
 
-On se place dans le cas où il y a N experts et C classes. On notera $p_j(c)$ la prédiction de la classe $c$ du modèle représentant l'expert $j$.
+On se place dans le cas où il y a $N$ experts et $C$ classes. On notera $p_j(c)$ la prédiction de la classe $c$ du modèle représentant l'expert $j$.
 
 #### **Le vote majoritaire**
 
@@ -102,20 +104,85 @@ $$
 
 &nbsp; &nbsp; La méthode de [@guan2018said] se base sur ce paradigme mais propose un calcul des poids différents. Ici, plutôt que de calculer séparément les poids $w_j$, nous allons les entraîner comme un modèle classique, en utilisant un descente de gradient et une fonction de perte. La différence principale avec la méthode précédente est qu'elle permet de faire un lien entre les différents experts. Dans un tel cadre, même si un modèle possède les mêmes performances que les autres mais que ce dernier fait des erreurs très différentes, alors ça aura tendance à augmenter son poids car il sera plus utile au moment de faire la moyenne.
 
-Mais comment procéder ?
+**Mais comment procéder ?** 
 
-Supposons que nous avons déja entainé nos $N$ modèles représentant chaque expert. 
+Supposons que nous avons déja entainé nos $N$ modèles représentant chaque expert. Pour entrainer nos poids, nous allons réutiliser le même dataset avec lequel on a entrainé chacun de nos modèles. Ainsi, pour une image, nous allons utiliser les opinions des experts qui ont réellement étiqueté cette dernière pour produire une distribution associée. On définit cette distribution comme la prédiction target de cette image. Nous utiliserons ensuite la prédiction des modèles des autres experts pour optimiser les poids.
 
+Par exemple, pour une image donnée, notons $I$ l'ensemble des médecins qui ont voté sur cette image. Notons également par $y_i \in \mathbb{R^C}$ l'opinion de l'expert $i \in I$. Pour chaque expert $j \in \llbracket 1,N \rrbracket$, on notera $p_j \in \mathbb{R}^C$ la prédiction de son modèle. On pose $w_j$ le poids du modèle $j$ (avec bien sûr $\sum_j w_j =1$). On évaluera ensuite la fonction de perte en utilisant la prédiction suivante :
 
+$$
+\frac{\sum_{i \notin I} w_i p_i}{\sum_{j \notin I} w_j}
+$$
 
+et la cible sera : 
+
+$$
+\frac{1}{|I|} \sum_{i \in I} y_i
+$$
+
+où nous mettrons à jour les paramètres par back propagation.
+
+On remarquera par ailleurs, que nous n'avons à aucun moment ajouter de données supplémentaires, par rapport à celles utilisées pour entraîner les modèles d'experts.
 
 ### Pourquoi les erreurs des experts ne posent pas de problème
 
+Une question intuitive survient assez rapidement avec ce genre de modèle : les experts restant des humains, il peut arriver que ces derniers se trompent, ces erreurs ne nuisent-elles pas à la qualité de classification de nos modèles ?
+
+Pour répondre à cette question, faisons quelques simulations. Nous allons prendre le célèbre dataset MNIST, sur lequel nous allons entrainer un modèle et ensuite estimer son taux d'erreur. Ce modèle sera vu comme le modèle d'un expert qui ne fait jamais d'erreur. Puis nous allons progressivement baisser la fiabilité de l'expert en changeant aléatoirement les labels du dataset d'entrainement avec une probabilité de plus en plus grande. Puis on estimera à nouveau chaque taux d'erreur. 
+
+Pour expérimenter, nous allons utiliser un modèle assez simple, dont le code est affiché ci-dessous :  
+
+```{python}
+#| eval: false
+import torch.nn as nn
+import torch.nn.functional as F 
+
+class test_model(nn.Module):
+    '''
+    Réseau de neurone emprunter sur Pytorch.org.
+    '''
+    def __init__(self):
+        super(test_model, self).__init__()
+        self.conv1 = nn.Conv2d(1, 6, 5)
+        self.pool = nn.MaxPool2d(2, 2)
+        self.conv2 = nn.Conv2d(6, 16, 5)
+        self.fc1 = nn.Linear(16*4*4, 120)
+        self.fc2 = nn.Linear(120, 84)
+        self.fc3 = nn.Linear(84, 10)
+
+    def forward(self, x):
+        x = self.pool(F.relu(self.conv1(x)))
+        x = self.pool(F.relu(self.conv2(x)))
+        x = x.view(-1, 16*4*4)
+        x = F.relu(self.fc1(x))
+        x = F.relu(self.fc2(x))
+        x = self.fc3(x)
+        return x
+```
+
+Nous allons donc utiliser les codes écrits en annexes pour pouvoir arriver à calculer notre courbe. Trève d'explication, voici le graphique que nous obtenons :
+
+<iframe src="./grap_noise.html" width="100%" height="500px"></iframe>
+
+Regardons ce graphique un peu plus près. Nous voyons ici que lorsque notre expert est parfait et ne fait pas d'erreur, le modèle est assez performant, le taux d'erreur sur le jeu de données test est de $1.14 \%$. Pourtant, on remarque ici qu'en corrompant les données avec une probabilité de $0.5$, le taux d'erreur n'augmente seulement jusqu'à $2.28 \%$, une différence qui n'est pas non plus aberrante. On peut même aller jusqu'à changer aléatoirement en label incorrect avec une probabilité de 0.8, le modèle qu'on entraînera n'aura qu'un taux d'erreur de $7.43 \%$ !
+
+(On remarque que la suite n'est pas très intéressante vue que le taux d'erreur va croitre très rapidement vers $1$ après $0.8$).
+
+Ainsi, nous pouvons, à l'aide de cet exemple, constater que les erreurs des experts n'affectent pas drastiquement la qualité de prévison des modèles (même lorsque que l'expert n'est pas fiable est fait beaucoup d'erreur !). On peut espérer que cela se généralise dans d'autres modèles.
+
+
 ## Implémentation avec Peerannot
 
+Il est temps de mettre en pratique ce que nous avons appris pour l'intégrer dans le package Peerannot.
 
+### Présentation de Peerannot 
 
+### Setup expérimental
 
+### Les experts sont-ils fiables ?
 
+### Implémentation
 
-PARLER DU PROBLEME AVEC LE BATCH FINAL QUI VAUT 1 (avec BN1 ça marche pas)
+### Comparaison des performances
+
+PARLER DU PROBLEME AVEC LE BATCH FINAL QUI VAUT 1 (avec BN1 ça marche pas, problème avec le calcul de l'écart-type)
