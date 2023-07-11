@@ -1,15 +1,15 @@
 #%%
 import torch
-from setup_cifar10h import worker_json, dl_link
+from crowd_models.setup_datasets import worker_json, dl_link
 import json
 from peerannot.helpers.networks import networks
 from .pytorch_tutorial.programme.loop import train, val
+from crowd_models.setup_datasets import cifar10h
 
-root = "../../peerannot/datasets/cifar10H/"
 #%% Construction dataset pour l'entrainement du worker 0
-train_file = open(root+"answers.json","r")
+train_file = open(cifar10h+"answers.json","r")
 tContent = train_file.read()
-obj_train = json.loads(tContent)   
+obj_train = json.loads(tContent)
 
 t = worker_json(obj_train, get_nb=False)
 tw0 = t["0"]
@@ -21,7 +21,7 @@ for i in list(tw0.keys()):
     dataset_tw0.append(dl_link(tw0[i],int(i),classe))
 
 #%% Construction dataset pour la validation du worker 0
-val_file = open(root+"answers_valid.json","r")
+val_file = open(cifar10h+"answers_valid.json","r")
 vContent = val_file.read()
 obj_val = json.loads(vContent)   
 
