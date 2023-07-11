@@ -2,7 +2,7 @@ import torch
 import os 
 from torchvision.io import read_image
 
-cifar10h = "../../peerannot/datasets/cifar10H/"
+cifar10h = "C:/Users/alexc/OneDrive/Bureau/DOSSIER FAC/Stage été 2023/peerannot/datasets/cifar10H/"
 
 def worker_json(answer, get_nb=False):
     """
