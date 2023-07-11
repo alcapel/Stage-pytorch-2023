@@ -20,9 +20,9 @@ def load_crowd(root, type={'train', 'valid'}):
         tContent = train_file.read()
         return json.loads(tContent) 
     elif type=='valid':
-        train_file = open(root+"answers_valid.json","r")
-        tContent = train_file.read()
-        return json.loads(tContent) 
+        valid_file = open(root+"answers_valid.json","r")
+        vContent = valid_file.read()
+        return json.loads(vContent) 
     
 def worker_json(answer, get_nb=False):
     """
