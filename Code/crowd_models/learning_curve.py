@@ -1,9 +1,9 @@
 #%%
 import torch
-from crowd_models.setup_datasets import worker_json, dl_link
+from setup_datasets import worker_json, dl_link
 import json
 from peerannot.helpers.networks import networks
-from .pytorch_tutorial.programme.loop import train, val
+from ..pytorch_tutorial.programme.loop import train, val
 from crowd_models.setup_datasets import cifar10h
 
 #%% Construction dataset pour l'entrainement du worker 0
