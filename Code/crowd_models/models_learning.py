@@ -1,17 +1,13 @@
 #%%
-import torch
 import torch.nn as nn
 import torch.optim as optim
-from setup_datasets import worker_json, dl_link, cifar10h
-import json
+from setup_datasets import *
 from peerannot.helpers.networks import networks
 from ..pytorch_tutorial.programme.loop import train
 from torch.utils.data import DataLoader
 
 #%% Chargement des données et fonctions 
-train_file = open(cifar10h+"answers.json","r")
-tContent = train_file.read()
-obj_train = json.loads(tContent)   
+obj_train = load_crowd(cifar10h, type='train')
 t = worker_json(obj_train, get_nb=False)
 classe = ["plane","cat","dog","car","deer", "horse","ship",
           "truck","frog", "bird"]

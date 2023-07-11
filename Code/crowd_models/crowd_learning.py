@@ -1,24 +1,19 @@
 #%% 
 import torch
 from ..pytorch_tutorial.programme.loop import train, test
-from setup_datasets import label_dist, dl_link, worker_json, cifar10h
-import json
+from setup_datasets import *
 from peerannot.helpers.networks import networks
 from torch.nn.functional import softmax
 import torch.optim as optim
 import torch.nn as nn
 
-
-# %%
-root = "../../peerannot/datasets/cifar10H/"
-train_file = open(cifar10h+"answers.json","r")
-tContent = train_file.read()
-obj_train = json.loads(tContent) 
 #%%
+obj_train = load_crowd(cifar10h, type='train')
 lab = label_dist(obj_train, 10)
 classe = ["plane","cat","dog","car","deer", "horse","ship",
           "truck","frog", "bird"]
 n_classe = len(classe)
+
 # %%
 t = worker_json(obj_train, get_nb=False)
 select_w = []

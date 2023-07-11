@@ -1,9 +1,29 @@
 import torch
 import os 
 from torchvision.io import read_image
-
+import json
 cifar10h = "C:/Users/alexc/OneDrive/Bureau/DOSSIER FAC/Stage été 2023/peerannot/datasets/cifar10H/"
 
+def load_crowd(root, type={'train', 'valid'}):
+    """
+    Load crowd data from a specified root directory.
+
+    Args:
+        root (str): The root directory where the data files are located.
+        type (str, optional): The type of data to load. Can be either 'train' or 'valid'. Defaults to 'train'.
+
+    Returns:
+        dict: The loaded crowd data as a dictionary.
+    """
+    if type=='train':
+        train_file = open(root+"answers.json","r")
+        tContent = train_file.read()
+        return json.loads(tContent) 
+    elif type=='valid':
+        train_file = open(root+"answers_valid.json","r")
+        tContent = train_file.read()
+        return json.loads(tContent) 
+    
 def worker_json(answer, get_nb=False):
     """
     Generates a JSON object that organizes workers responses for each task. 

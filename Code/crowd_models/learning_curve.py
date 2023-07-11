@@ -1,34 +1,29 @@
 #%%
 import torch
-from setup_datasets import worker_json, dl_link
-import json
+from setup_datasets import *
 from peerannot.helpers.networks import networks
 from ..pytorch_tutorial.programme.loop import train, val
-from crowd_models.setup_datasets import cifar10h
+import torch.nn as nn
+import torch.optim as optim
+from torch.utils.data import DataLoader
 
 #%% Construction dataset pour l'entrainement du worker 0
-train_file = open(cifar10h+"answers.json","r")
-tContent = train_file.read()
-obj_train = json.loads(tContent)
+obj_train = load_crowd(cifar10h, type='train')
+classe = ["plane","cat","dog","car","deer", "horse","ship",
+          "truck","frog", "bird"]
 
 t = worker_json(obj_train, get_nb=False)
 tw0 = t["0"]
-classe = ["plane","cat","dog","car","deer", "horse","ship",
-          "truck","frog", "bird"]
 dataset_tw0 = []
 
 for i in list(tw0.keys()): 
     dataset_tw0.append(dl_link(tw0[i],int(i),classe))
 
 #%% Construction dataset pour la validation du worker 0
-val_file = open(cifar10h+"answers_valid.json","r")
-vContent = val_file.read()
-obj_val = json.loads(vContent)   
+obj_val = load_crowd(cifar10h, type='valid')
 
 v = worker_json(obj_val, get_nb=False)
 vw0 = v["0"]
-classe = ["plane","cat","dog","car","deer", "horse","ship",
-          "truck","frog", "bird"]
 dataset_vw0 = []
 
 for i in list(vw0.keys()): 
@@ -36,14 +31,11 @@ for i in list(vw0.keys()):
 
 
 #%%
-from torch.utils.data import DataLoader
 trainsetw0 = DataLoader(dataset_tw0,  batch_size=8, shuffle=True, num_workers=2)
 valsetw0 = DataLoader(dataset_vw0, batch_size=8, shuffle=True, num_workers=2)
 
-# %%
-Net = networks('resnet18', n_classes=10, pretrained=True)
-
 # %% Gel des paramètres sauf sur la dernière couche 
+# Net = networks('resnet18', n_classes=10, pretrained=True)
 
 # for param in Net.parameters():
 #     param.requires_grad = False
@@ -52,15 +44,14 @@ Net = networks('resnet18', n_classes=10, pretrained=True)
 #     param.requires_grad = True
 
 #%% 
+Net = networks('resnet18', n_classes=10, pretrained=True)
+
 # Freeze all layers except the last one
 for name, param in Net.named_parameters():
     if "layer4" not in name:
         param.requires_grad = False
 
-
 # %%
-import torch.nn as nn
-import torch.optim as optim
 loss = nn.CrossEntropyLoss()
 optimizer = optim.SGD(Net.parameters(), lr=0.001, momentum=0.9)
 epochs = 10
@@ -75,10 +66,8 @@ for i in range(epochs):
     v_curve[i] = val(valsetw0, Net, loss)
 print("C'est terminé !")
 
-
 # %%
 import matplotlib.pyplot as plt
 
 plt.plot(l_curve)
 plt.plot(v_curve)
-# %%
