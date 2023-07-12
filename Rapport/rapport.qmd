@@ -175,7 +175,7 @@ class test_model(nn.Module):
 
 Nous allons donc utiliser les codes écrits en annexes pour pouvoir arriver à calculer notre courbe. Trève d'explication, voici le graphique que nous obtenons :
 
-<iframe src="../noise/graph_MNIST.html" width="100%" height="500px"></iframe>
+<iframe src="./grap_noise.html" width="100%" height="500px"></iframe>
 
 Regardons ce graphique un peu plus près. Nous voyons ici que lorsque notre expert est parfait et ne fait pas d'erreur, le modèle est assez performant, le taux d'erreur sur le jeu de données test est de $1.14 \%$. Pourtant, on remarque ici qu'en corrompant les données avec une probabilité de $0.5$, le taux d'erreur n'augmente seulement jusqu'à $2.28 \%$, une différence qui n'est pas non plus aberrante. On peut même aller jusqu'à changer aléatoirement en label incorrect avec une probabilité de 0.8, le modèle qu'on entraînera n'aura qu'un taux d'erreur de $7.43 \%$ !
 
@@ -203,19 +203,86 @@ Le formatage des datasets est expliqué sur le site de [Peerannot](https://peera
 ### Setup expérimental
 
 #### Le dataset
-Nous allons utiliser ici CIFAR10H, un dataset crowdsoucé d'images de taille $32\times 32$ colorées appartenant à 10 classes. On dispose de 9500 images d'entrainement, et 500 images de validation, chacunes annotées par un certains nombre de personne parmis 2571 experts. On disposera enfin d'un set de 50000 images test, pour évaluer les performances de nos futurs modèles.
+Nous allons utiliser ici CIFAR10H, un dataset crowdsourcé d'images de taille $32\times 32$ colorées appartenant à 10 classes. On dispose de 9500 images d'entrainement, et 500 images de validation, chacunes annotées par un certains nombre de personne parmis 2571 experts. Chacune de ces 9500 images ont été étiquettées par au moins 63 personnes, et les experts ont voté pour au moins 181 images.
+
+On disposera enfin d'un set de 50000 images test, pour évaluer les performances de nos futurs modèles.
 
 #### L'architecture
 
-Pour chaque modèle d'expert, nous utiliserons un ResNet18 préentrainé, sur lequel gélerons toutes les couches sauf la dernière (ou seulement la couche ``model.fc``). 
+Pour chaque modèle d'expert, nous utiliserons un ResNet18 préentrainé, sur lequel gélerons toutes les couches sauf la dernière (ou seulement la couche ``model.fc``). On entraînera nos modèles avec une cross entropy loss et une descente de gradient stochastique.
 
 ### Les experts sont-ils fiables ?
 
 ### Implémentation
 
+Comme nous l'avons expliqué plus tôt, l'implémentation va se séparer en deux parties distinctes : l'entraînement des modèles experts, et l'entraînement des poids.
+
+#### Entraînement des modèles
+
+Dans notre contexte, nous souhaitons entraîner 2571 modèles à partir d'un ResNet18.
+
+:::{.callout-warning appearance="simple"}
+## Attention
+Nous savons que chaque modèle aura au moins un dataset de taille 181 mais au plus de taille 196. Il va donc falloir faire des concessions pendant l'entrainement
+:::
+
+Pour se faire, nous allons alors avec des poids déjà préetrainé à l'aide de IMAGENET, geler les première couches de chaque modèle et n'entraîner que les dernières. La question est de savoir si nous utiliserons la dernière couche ou seulement la couche ``model.fc``. Pour pouvoir trancher, nous avons donc commencer par tracer la courbe d'apprentissage et de validation sur les deux modèles, le code correspondant est `Code/crowd_models/learning_curve.py`: 
+
+<iframe src="./learning_curve.html" width="100%" height="500px"></iframe>
+
+De ce graphique, on déduit deux choses :
+
+- il n'est pas nécessaire d'aller au delà de 100 epochs pour mieux apprendre
+
+- `Net` (celui avec juste la couche ``model.fc``) possède une performance quasiment équivalente à `Net2` qui demande plus de paramètres à estimer.(PAS CONVAINCU EN DISCUTER)
+
+Nous avons donc toutes nos informations pour pouvoir entraîner nos modèles correctement. 
+
+Or, nous remarquons que avec `peerannot`, le format du `.json` des labels n'est pas adaptée à l'entraînement de nos experts. Nous allons donc devoir faire tout un travail de mise en place des datasets et les codes correspondant se trouverons dans le fichier `setup_datasets.py`. Ainsi, une fois le dataset prêt, nous avons entraîner chaque modèle tout un week-end et nous les avons enregistrer dans un dossier appelé `expert_models`. Voici le code pour l'entraînement (seulement):
+
+```{python}
+#| eval: false
+#| code-fold: false
+#| code-summary: "Entraînement des modèles"
+
+# dataset_all est une liste de dataset adapté pour 
+# l'entraînement de chaque modèle
+
+for i in range(n):
+    print(i, end="\r")
+    if len(dataset_all[i])%32==1:
+        trainset = DataLoader(dataset_all[i],  batch_size=30, 
+                              shuffle=True, num_workers=2)
+    else:
+        trainset = DataLoader(dataset_all[i],  batch_size=32, 
+                              shuffle=True, num_workers=2)
+    Net = networks('resnet18', n_classes=10, pretrained=True).to("cuda")
+    gel(Net)  # gèle selon la méthode que l'on a validé
+    optimizer = optim.SGD(Net.parameters(), lr=0.001, momentum=0.9)
+    for j in range(epochs):
+        train(trainset, Net, optimizer, loss, ongoing=False)
+    torch.save(Net.state_dict(), f"./expert_models/model-{i}_weights.pth")
+
+print("Tout le monde est entrainé !")
+
+```
+
+On voit dans le code précédent un test avant le chargement du Dataset pour savoir si on entraîne les modèles avec des min-batches de taille 30 ou 32. En réalité, il se trouve que pour certains experts, le dernier mini-batch était de taille 1 ce qui entraîner une erreur pendant l'entraînement. Dès lors, voila ce qu'affiche le terminal :
+
+```{bash} 
+ValueError: Expected more than 1 value per channel when training, got input size torch.Size([1, 512, 1, 1])
+```
+Cette erreur provient de 
+(avec BN1 ça marche pas, problème avec le calcul de l'écart-type)
+
+#### Entraînement des poids
+
+
+Une fois que tous nos modèles sont bien enregistrer, il est 
+
 ### Comparaison des performances
 
-PARLER DU PROBLEME AVEC LE BATCH FINAL QUI VAUT 1 (avec BN1 ça marche pas, problème avec le calcul de l'écart-type)
+ (avec BN1 ça marche pas, problème avec le calcul de l'écart-type)
 
 
 - Problème avec le nombre de worker trop important.
