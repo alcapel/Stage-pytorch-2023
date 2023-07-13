@@ -4,7 +4,7 @@ title-block-banner: true
 format:
   html:
     toc: true
-    theme: [slate, sass_variable.scss]
+    theme: [darkly, sass_variable.scss]
     html-math-method: katex
 bibliography: biblio.bib
 number-sections: true
@@ -184,7 +184,7 @@ Regardons ce graphique un peu plus près. Nous voyons ici que lorsque notre expe
 On voit que la suite n'est pas très intéressante vue que le taux d'erreur va croitre très rapidement vers $1$ après $0.8$.
 :::
 
-Ainsi, nous pouvons, à l'aide de cet exemple, constater que les erreurs des experts n'affectent pas drastiquement la qualité de prévison des modèles (même lorsque que l'expert n'est pas fiable est fait beaucoup d'erreur !). On peut espérer que cela se généralise dans d'autres modèles.
+Ainsi, nous pouvons, à l'aide de cet exemple, constater que les erreurs des experts n'affectent pas drastiquement la qualité de prévison des modèles (même lorsque que l'expert n'est pas fiable est fait beaucoup d'erreur !). On peut espérer que cela se généralise dans d'autres modèles. (On a tester avec un autre dataset et une autre architecture, le résultat est bien moins satisfaisant)
 
 
 ## Implémentation avec Peerannot
@@ -226,7 +226,7 @@ Dans notre contexte, nous souhaitons entraîner 2571 modèles à partir d'un Res
 Nous savons que chaque modèle aura au moins un dataset de taille 181 mais au plus de taille 196. Il va donc falloir faire des concessions pendant l'entrainement
 :::
 
-Pour se faire, nous allons alors avec des poids déjà préetrainé à l'aide de IMAGENET, geler les première couches de chaque modèle et n'entraîner que les dernières. La question est de savoir si nous utiliserons la dernière couche ou seulement la couche ``model.fc``. Pour pouvoir trancher, nous avons donc commencer par tracer la courbe d'apprentissage et de validation sur les deux modèles, le code correspondant est `Code/crowd_models/learning_curve.py`: 
+Pour se faire, nous allons alors avec des poids déjà préetrainé à l'aide de IMAGENET, geler les première couches de chaque modèle et n'entraîner que les dernières. La question est de savoir si nous utiliserons la dernière couche ou seulement la couche ``model.fc``. Pour pouvoir trancher, nous avons donc commencé par tracer la courbe d'apprentissage et de validation sur les deux modèles, le code correspondant est `Code/crowd_models/learning_curve.py`: 
 
 <iframe src="./learning_curve.html" width="100%" height="500px"></iframe>
 
@@ -238,7 +238,7 @@ De ce graphique, on déduit deux choses :
 
 Nous avons donc toutes nos informations pour pouvoir entraîner nos modèles correctement. 
 
-Or, nous remarquons que avec `peerannot`, le format du `.json` des labels n'est pas adaptée à l'entraînement de nos experts. Nous allons donc devoir faire tout un travail de mise en place des datasets et les codes correspondant se trouverons dans le fichier `setup_datasets.py`. Ainsi, une fois le dataset prêt, nous avons entraîner chaque modèle tout un week-end et nous les avons enregistrer dans un dossier appelé `expert_models`. Voici le code pour l'entraînement (seulement):
+Or, nous remarquons que avec `peerannot`, le format du `.json` des labels n'est pas adapté à l'entraînement de nos experts. Nous allons donc devoir faire tout un travail de mise en place des datasets et les codes correspondant se trouverons dans le fichier `setup_datasets.py`. Ainsi, une fois le dataset prêt, nous avons entraîné chaque modèle tout un week-end et nous les avons enregistrés dans un dossier appelé `expert_models`. Voici le code pour l'entraînement (seulement):
 
 ```{python}
 #| eval: false
@@ -273,17 +273,97 @@ On voit dans le code précédent un test avant le chargement du Dataset pour sav
 ValueError: Expected more than 1 value per channel when training, got input size torch.Size([1, 512, 1, 1])
 ```
 Cette erreur provient de 
-(avec BN1 ça marche pas, problème avec le calcul de l'écart-type)
+(avec BN1 ça marche pas, problème avec le calcul de l'écart-type ?)
 
 #### Entraînement des poids
 
 
-Une fois que tous nos modèles sont bien enregistrer, il est 
+Une fois que tous nos modèles sont bien enregistrer, il est temps de mettre en place l'entraînement de nos poids. Il a fallu d'abord créer un dataset comprenant l'image et la distribution associée à l'aide des votes des experts : nous avons accès facilement à ses information avec le format des dataset de `peerannot`. Toutes les fonctions utilisées pour construire le dataset est bien sur dans `setup_datasets.py`.
+
+Un fois que nous avons le dataset, la première idée a été de charger tous les modèles dans une liste pour pouvoir ensuite appelé facilement ces derniers. Cependant, cela revenait à charger 2571 modèles et au bout du $480^e$ modèle, le terminal nous a affiché cette erreur : 
+
+```{bash}
+outofmemoryerror: cuda out of memory. tried to allocate 20.00 mib (gpu 0; 22.03 gib total capacity; 21.26 gib already allocated; 18.88 mib free; 21.36 gib reserved in total by pytorch) if reserved memory is >> allocated memory try setting max_split_size_mb to avoid fragmentation. see documentation for memory management and pytorch_cuda_alloc_conf
+```
+
+La mémoire nécessaire pour charger tous les modèles en même temps était trop importante pour le GPU, il a donc fallu changer de stratégie.
+
+Ainsi, nous avons commencé par charger un modèle uniquement lorsqu'on en a besoin pour effectuer des calculs, seulement, cette méthode aussi était trop couteuse en mémoire.
+
+```{python}
+#| eval: false
+#| code-fold: true
+#| code-summary: "Entraînement des poids"
+
+w = torch.ones(n_worker, dtype=float, requires_grad=True)/n_worker
+param = nn.Parameter(w, requires_grad=True)
+optimizer = optim.SGD([param], lr=0.01,momentum=0.9)
+loss = nn.CrossEntropyLoss()
+
+for batch, (X, lab) in enumerate(trainset):
+    optimizer.zero_grad()
+    model = networks('resnet18', n_classes=10, pretrained=False).to("cuda")
+    p = torch.zeros((batch_size, n_classe), requires_grad=False).to("cuda")
+    for i in range(batch_size):
+        work_t = get_workers(X[i], dataset, obj_train, tot_worker)
+        tot = 0
+        for k in work_t:
+            p[i] = p[i] + worker_pred(model, X, int(k))[i]*param[int(k)]    #prédiction du worker k sur l'item i
+            tot = tot + param[int(k)]
+        p[i] = p[i]/tot
+    lossRes = loss(p, lab.to("cuda"))
+    lossRes.backward()
+    optimizer.step()
+
+```
+
+(les paramètres sont chargés dans la fonction `worker_pred` situé dans le module `models.py`).
+
+Mais à ce moment là, une autre erreur a fait surface :
+
+```{bash}
+RuntimeError: one of the variables needed for gradient computation has been modified by an inplace operation: [torch.cuda.FloatTensor [10]], which is output 0 of AsStridedBackward0, is at version 1666; expected version 1665 instead. Hint: enable anomaly detection to find the operation that failed to compute its gradient, with torch.autograd.set_detect_anomaly(True).
+```
+
+Il nous étais impossible de calculer le gradient (et donc fait la backpropagation...). On a du modifier la structure du code pour pouvoir nous permettre ce calcul primordial. Puis une nouvelle fois un problème de mémoire sur le GPU est arrivé, on a donc du rajouter trois lignes de code à la fin du calcul des prédictions pour supprimer le modèle et nettoyer la mémoire du GPU pour retirer toute trace éventuelle. Nous obtenons le code final suivant :
+
+```{python}
+#| eval: false
+#| code-fold: false
+#| code-summary: "Entraînement des modèles"
+
+tot_worker = list(t.keys())
+w = torch.ones(n_worker, dtype=torch.float, requires_grad=True) / n_worker
+param = nn.Parameter(w)
+optimizer = optim.SGD([param], lr=0.01, momentum=0.9)
+loss = nn.CrossEntropyLoss()
+
+for batch, (X, lab) in enumerate(trainset):
+    optimizer.zero_grad()
+    pred = torch.zeros((batch_size, n_classe)).to("cuda")
+    model = networks('resnet18', n_classes=10, pretrained=False).to("cuda")
+    for i in range(batch_size):
+        work_t = get_workers(X[i], dataset, obj_train, tot_worker)
+        p = torch.zeros((n_worker, n_classe))
+        sel_w = torch.zeros((n_worker, 1))
+        for k in work_t:
+            p[int(k)] = worker_pred(model, X, int(k))[i].detach()
+            sel_w[int(k)] = 1
+        pred[i] = (1/sel_w.t().matmul(param))*p.t().matmul(param)
+    del model
+    gc.collect()
+    torch.cuda.empty_cache()
+    lossRes = loss(pred, lab.to("cuda"))
+    lossRes.backward()
+    optimizer.step()
+    # l'article ne précise pas si il faut softmax les poids 
+    # pendant la boucle ou à la fin.
+```
+
 
 ### Comparaison des performances
 
- (avec BN1 ça marche pas, problème avec le calcul de l'écart-type)
+## Conclusion et perspectives
 
+Notre modèle est donc ?
 
-- Problème avec le nombre de worker trop important.
-- en sélectionner une partie, mais adapté l'entrainement des images en conséquence ?
