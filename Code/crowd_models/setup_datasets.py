@@ -2,7 +2,7 @@ import torch
 import os 
 from torchvision.io import read_image
 import json
-cifar10h = "C:/Users/alexc/OneDrive/Bureau/DOSSIER FAC/Stage été 2023/peerannot/datasets/cifar10H/"
+cifar10h_root = "C:/Users/alexc/OneDrive/Bureau/DOSSIER FAC/Stage été 2023/peerannot/datasets/cifar10H/"
 
 def load_crowd(root, type={'train', 'valid'}):
     """
@@ -88,7 +88,7 @@ def get_prob(list, n_class):
 # %%
 def label_dist(dict, n_class, which='tensor'):
     """
-    Calculate the label distributioof a task given by workers responses in a dictionary.
+    Calculate the label distribution of a task given by workers responses in a dictionary.
 
     Parameters:
         dict (dict): A dictionary containing tasks as keys and workers responses as values.
@@ -113,7 +113,7 @@ def label_dist(dict, n_class, which='tensor'):
         return res
 
 #%%
-def dl_link(lab, num, classe, type='train', root=cifar10h):
+def dl_link(lab, num, classe, type='train', root=cifar10h_root):
     """
     Return the image and its label.
 

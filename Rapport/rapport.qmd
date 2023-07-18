@@ -325,7 +325,7 @@ Mais à ce moment là, une autre erreur a fait surface :
 RuntimeError: one of the variables needed for gradient computation has been modified by an inplace operation: [torch.cuda.FloatTensor [10]], which is output 0 of AsStridedBackward0, is at version 1666; expected version 1665 instead. Hint: enable anomaly detection to find the operation that failed to compute its gradient, with torch.autograd.set_detect_anomaly(True).
 ```
 
-Il nous étais impossible de calculer le gradient (et donc fait la backpropagation...). On a du modifier la structure du code pour pouvoir nous permettre ce calcul primordial. Puis une nouvelle fois un problème de mémoire sur le GPU est arrivé, on a donc du rajouter trois lignes de code à la fin du calcul des prédictions pour supprimer le modèle et nettoyer la mémoire du GPU pour retirer toute trace éventuelle. Nous obtenons le code final suivant :
+Il nous étais impossible de calculer le gradient (et donc fait la backpropagation...). On a du modifier la structure du code pour pouvoir nous permettre ce calcul primordial. Puis une nouvelle fois un problème de mémoire sur le GPU est arrivé, on a donc du rajouter trois lignes de code à la fin du calcul des prédictions pour supprimer le modèle et nettoyer la mémoire du GPU pour retirer toute trace éventuelle. Nous obtenons le code suivant :
 
 ```{python}
 #| eval: false
@@ -359,6 +359,58 @@ for batch, (X, lab) in enumerate(trainset):
     # l'article ne précise pas si il faut softmax les poids 
     # pendant la boucle ou à la fin.
 ```
+
+Finalement, le problème le plus embêtant est celui que l'on obtient avec ce code : le temps de calcul. Il semblerait que dans cette configuration, l'entraînement des poids pour seulement une epoch va durer 11 jours ! Le stage sera terminer avant la fin de la deuxième epoch. J'ai donc tenter de contourné le problème en ne solicitant qu'un sous ensemble (déterminé aléatoirement pour chaque mini-batch) des modèles pour réduire le temps de calcul. Le code final est donc celui-ci :
+
+```{python}
+#| eval: false
+#| code-fold: true
+#| code-summary: "Voir le modèle"
+import numpy as np
+n_worker = len(t)
+w = torch.ones(n_worker, dtype=torch.float, requires_grad=True) / n_worker
+param = nn.Parameter(w)
+optimizer = optim.SGD([param], lr=0.01, momentum=0.9)
+loss = nn.CrossEntropyLoss()
+
+err = np.zeros(len(trainset))
+
+for batch, (X, lab) in enumerate(trainset):
+    workers = sample(list(t.keys()), 700)
+    optimizer.zero_grad()
+    model = networks('resnet18', n_classes=10, pretrained=False).to("cuda")
+    if batch<len(trainset)-1:
+        # pour faire coïncider la taille des batch pour savoir si il s'agit du dernier
+        pred = torch.zeros((batch_size, n_classe)).to("cuda")
+        for i in range(batch_size):
+            work_t = get_workers(X[i], dataset, obj_train, workers)
+            p = torch.zeros((n_worker, n_classe))
+            sel_w = torch.zeros((n_worker, 1))
+            for k in work_t:
+                p[int(k)] = worker_pred(model, X, int(k))[i].detach()
+                sel_w[int(k)] = 1
+            pred[i] = (1/sel_w.t().matmul(param))*p.t().matmul(param)
+    else:
+        new_bsize = len(obj_train)%batch_size
+        pred = torch.zeros((new_bsize, n_classe)).to("cuda")
+        for i in range(new_bsize):
+            work_t = get_workers(X[i], dataset, obj_train, workers)
+            p = torch.zeros((n_worker, n_classe))
+            sel_w = torch.zeros((n_worker, 1))
+            for k in work_t:
+                p[int(k)] = worker_pred(model, X, int(k))[i].detach()
+                sel_w[int(k)] = 1
+            pred[i] = (1/sel_w.t().matmul(param))*p.t().matmul(param)
+    del model
+    gc.collect()
+    torch.cuda.empty_cache()
+    lossRes = loss(pred, lab.to("cuda"))
+    err[batch] = lossRes.item()
+    lossRes.backward()
+    optimizer.step()
+
+```
+
 
 
 ### Comparaison des performances
