@@ -1,5 +1,6 @@
 #%%
-from setup_datasets import *
+from setup_datasets import dl_link, label_dist
+import torch
 from torch.nn.functional import softmax
 from peerannot.helpers.networks import networks
 import torch.optim as optim
@@ -29,7 +30,7 @@ trainset = DataLoader(dataset, batch_size=batch_size,
                       shuffle=True, num_workers=2)
 
 # %%
-get_weights.get_workers(50)
+get_weights.get_workers(100)
 err = np.zeros(len(trainset))
 for batch, (X,y) in enumerate(trainset):
     optimizer.zero_grad()
@@ -42,5 +43,6 @@ for batch, (X,y) in enumerate(trainset):
     err[batch] = lossRes.item()
     lossRes.backward()
     optimizer.step()
+
 
 # %%

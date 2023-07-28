@@ -45,10 +45,7 @@ Un cas concret où la labélisation d'une image n'est pas évidente, c'est lorsq
 - DR sévère
 - DR proliferative
 
-IMAGE DES DIFFERENTES CLASSES
-
-
-Chaque image sera traité par une petite partie de ce groupe de médecin (aléatoirement) et chaque médecin va étudier une petite partie de l'ensemble des dépistages.
+Chaque image sera traitée par une petite partie de ce groupe de médecin (aléatoirement) et chaque médecin va étudier une petite partie de l'ensemble des dépistages.
 
 On peut facilement se persuader ici que chaque expert va donner son propre diagnostic (éventuellement différents les uns des autres) du fait du potentiel bruit qui se trouve dans ces images.
 
@@ -189,7 +186,7 @@ Ainsi, nous pouvons, à l'aide de cet exemple, constater que les erreurs des exp
 
 ## Implémentation avec Peerannot
 
-Il est temps de mettre en pratique ce que nous avons appris pour l'intégrer dans la librairie Peerannot.
+Il est temps de mettre en pratique ce que nous avons appris pour l'intégrer dans la librairie [@peerannot].
 
 ### Présentation de Peerannot 
 
@@ -234,11 +231,11 @@ De ce graphique, on déduit deux choses :
 
 - il n'est pas nécessaire d'aller au delà de 100 epochs pour mieux apprendre
 
-- `Net` (celui avec juste la couche ``model.fc``) possède une performance quasiment équivalente à `Net2` qui demande plus de paramètres à estimer.(PAS CONVAINCU EN DISCUTER)
+- `Net` (celui avec juste la couche ``model.fc``) possède une performance quasiment équivalente à `Net2` qui demande plus de paramètres à estimer.
 
 Nous avons donc toutes nos informations pour pouvoir entraîner nos modèles correctement. 
 
-Or, nous remarquons que avec `peerannot`, le format du `.json` des labels n'est pas adapté à l'entraînement de nos experts. Nous allons donc devoir faire tout un travail de mise en place des datasets et les codes correspondant se trouverons dans le fichier `setup_datasets.py`. Ainsi, une fois le dataset prêt, nous avons entraîné chaque modèle tout un week-end et nous les avons enregistrés dans un dossier appelé `expert_models`. Voici le code pour l'entraînement (seulement):
+Or, nous remarquons qu'avec `peerannot`, le format du `.json` des labels n'est pas adapté à l'entraînement de nos experts. Nous allons donc devoir faire tout un travail de mise en place des datasets et les codes correspondant se trouverons dans le fichier `setup_datasets.py`. Ainsi, une fois le dataset prêt, nous avons entraîné chaque modèle tout un week-end et nous les avons enregistrés dans un dossier appelé `expert_models`. Voici le code pour l'entraînement (seulement):
 
 ```{python}
 #| eval: false
@@ -267,20 +264,21 @@ print("Tout le monde est entrainé !")
 
 ```
 
-On voit dans le code précédent un test avant le chargement du Dataset pour savoir si on entraîne les modèles avec des min-batches de taille 30 ou 32. En réalité, il se trouve que pour certains experts, le dernier mini-batch était de taille 1 ce qui entraîner une erreur pendant l'entraînement. Dès lors, voila ce qu'affiche le terminal :
+On voit dans le code précédent un test avant le chargement du Dataset pour savoir si on entraîne les modèles avec des min-batches de taille 30 ou 32. En réalité, il se trouve que pour certains experts, le dernier mini-batch était de taille 1 ce qui entraînait une erreur pendant l'entraînement. Dès lors, voila ce qu'affiche le terminal :
 
 ```{bash} 
 ValueError: Expected more than 1 value per channel when training, got input size torch.Size([1, 512, 1, 1])
 ```
+
 Cette erreur provient de 
 (avec BN1 ça marche pas, problème avec le calcul de l'écart-type ?)
 
 #### Entraînement des poids
 
 
-Une fois que tous nos modèles sont bien enregistrer, il est temps de mettre en place l'entraînement de nos poids. Il a fallu d'abord créer un dataset comprenant l'image et la distribution associée à l'aide des votes des experts : nous avons accès facilement à ses information avec le format des dataset de `peerannot`. Toutes les fonctions utilisées pour construire le dataset est bien sur dans `setup_datasets.py`.
+Une fois que tous nos modèles sont bien enregistrés, il est temps de mettre en place l'entraînement de nos poids. Il a fallu d'abord créer un dataset comprenant l'image et la distribution associée à l'aide des votes des experts : nous avons accès facilement à ses information avec le format des datasets de `peerannot`. Toutes les fonctions utilisées pour construire le dataset est bien sûr dans `setup_datasets.py`.
 
-Un fois que nous avons le dataset, la première idée a été de charger tous les modèles dans une liste pour pouvoir ensuite appelé facilement ces derniers. Cependant, cela revenait à charger 2571 modèles et au bout du $480^e$ modèle, le terminal nous a affiché cette erreur : 
+Un fois que nous avons le dataset, la première idée a été de charger tous les modèles dans une liste pour pouvoir ensuite appeler facilement ces derniers. Cependant, cela revenait à charger 2571 modèles et au bout du $480^e$ modèle, le terminal nous a affiché cette erreur : 
 
 ```{bash}
 outofmemoryerror: cuda out of memory. tried to allocate 20.00 mib (gpu 0; 22.03 gib total capacity; 21.26 gib already allocated; 18.88 mib free; 21.36 gib reserved in total by pytorch) if reserved memory is >> allocated memory try setting max_split_size_mb to avoid fragmentation. see documentation for memory management and pytorch_cuda_alloc_conf
@@ -325,7 +323,7 @@ Mais à ce moment là, une autre erreur a fait surface :
 RuntimeError: one of the variables needed for gradient computation has been modified by an inplace operation: [torch.cuda.FloatTensor [10]], which is output 0 of AsStridedBackward0, is at version 1666; expected version 1665 instead. Hint: enable anomaly detection to find the operation that failed to compute its gradient, with torch.autograd.set_detect_anomaly(True).
 ```
 
-Il nous étais impossible de calculer le gradient (et donc fait la backpropagation...). On a du modifier la structure du code pour pouvoir nous permettre ce calcul primordial. Puis une nouvelle fois un problème de mémoire sur le GPU est arrivé, on a donc du rajouter trois lignes de code à la fin du calcul des prédictions pour supprimer le modèle et nettoyer la mémoire du GPU pour retirer toute trace éventuelle. Nous obtenons le code suivant :
+Il nous était impossible de calculer le gradient (et donc fait la backpropagation...). On a du modifier la structure du code pour pouvoir nous permettre ce calcul primordial. Puis une nouvelle fois un problème de mémoire sur le GPU est arrivé, on a donc du rajouter trois lignes de code à la fin du calcul des prédictions pour supprimer le modèle et nettoyer la mémoire du GPU pour retirer toute trace éventuelle. Nous obtenons le code suivant :
 
 ```{python}
 #| eval: false
@@ -360,7 +358,7 @@ for batch, (X, lab) in enumerate(trainset):
     # pendant la boucle ou à la fin.
 ```
 
-Finalement, le problème le plus embêtant est celui que l'on obtient avec ce code : le temps de calcul. Il semblerait que dans cette configuration, l'entraînement des poids pour seulement une epoch va durer 11 jours ! Le stage sera terminer avant la fin de la deuxième epoch. J'ai donc tenter de contourné le problème en ne solicitant qu'un sous ensemble (déterminé aléatoirement pour chaque mini-batch) des modèles pour réduire le temps de calcul. Le code final est donc celui-ci :
+Finalement, le problème le plus embêtant est celui que l'on obtient avec ce code : le temps de calcul. Il semblerait que dans cette configuration, l'entraînement des poids pour seulement une epoch va durer 11 jours ! Le stage sera terminé avant la fin de la deuxième epoch. J'ai donc tenter de contourné le problème en ne solicitant qu'un sous ensemble (déterminé aléatoirement pour chaque mini-batch) des modèles pour réduire le temps de calcul. Le code final est donc celui-ci :
 
 ```{python}
 #| eval: false
@@ -411,11 +409,34 @@ for batch, (X, lab) in enumerate(trainset):
 
 ```
 
-
+Pour faciliter la lisibilité du code et l'accès à certaines information, nous avons créer la classe `CIFAR10H` disponible dans le fichier `models.py`.
 
 ### Comparaison des performances
 
+Après avoir entraîner nos poids, nous allons pouvoir comparer la méthode d'agrégation avec d'autres stratégies. Le package `peerannot` a déjà plusieurs stratégies disponibles notamment les plus rudimentaires : le vote majoritaire et l'expert moyen.
+
+On se met dans un cas restreint, où nous allons utiliser seulement 200 modèles sur les 2571 entrainés, et faire le calcul des stratégies à l'aide de ces derniers. Voici le tableau obtenu : 
+
+|   Méthode   | Vote majoritaire | Expert moyen | [@guan2018said] |
+|-------------|------------------|--------------|-----------------|
+|  Précision  |        10%       |      10%     |       10%       |
+
+On voit ici que les résultats ne sont pas très intéressants et sont inexploitables dans la mesure où même le vote majoritaire possède un taux de précision beaucoup trop faible.
+
+
 ## Conclusion et perspectives
 
-Notre modèle est donc ?
+Avec de telles résultats, nous ne pouvons donc pas conclure grand chose de la méthode de [@guan2018said]. Le manque de temps ne permettra pas de pouvoir produire de résultats intéressants, même si il est sûrement possible de les améliorer et d'enfin pouvoir les comparer sérieusement. 
+
+On aurait pu :
+
+- améliorer nos modèles d'expert en utilisant une variante de la méthode de [@mnih2012learning]
+- utiliser un dataset avec des experts ayant votés plus de données (afin de mieux entrainer les modèles)
+- avec ce nouveau dataset, ne pas geler les coefficients de `resnet18` pour augmenter la précision
+- faire plus d'epochs sur le modèle des poids
+
+
+On pourrait également améliorer encore le modèle en faisant la version $IWDN$ de [@guan2018said] permettant aux poids d'apprendre en tant que fonction de l'image. Cela aurait permis de prendre en compte la difficulté de celle-ci. 
+
+Au final, la seule conclusion 'raisonnable' que nous puissions faire et que la stratégie est au moins aussi performante que le vote majoritaire (ce qui est la moindre des choses).
 
