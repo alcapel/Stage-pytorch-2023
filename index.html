@@ -2,7 +2,7 @@
 <html xmlns="http://www.w3.org/1999/xhtml" lang="en" xml:lang="en"><head>
 
 <meta charset="utf-8">
-<meta name="generator" content="quarto-1.3.427">
+<meta name="generator" content="quarto-1.3.433">
 
 <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
 
@@ -203,8 +203,7 @@ div.csl-indent {
 <li>DR sévère</li>
 <li>DR proliferative</li>
 </ul>
-<p>IMAGE DES DIFFERENTES CLASSES</p>
-<p>Chaque image sera traité par une petite partie de ce groupe de médecin (aléatoirement) et chaque médecin va étudier une petite partie de l’ensemble des dépistages.</p>
+<p>Chaque image sera traitée par une petite partie de ce groupe de médecin (aléatoirement) et chaque médecin va étudier une petite partie de l’ensemble des dépistages.</p>
 <p>On peut facilement se persuader ici que chaque expert va donner son propre diagnostic (éventuellement différents les uns des autres) du fait du potentiel bruit qui se trouve dans ces images.</p>
 <p>C’est dans ce cadre que <span class="citation" data-cites="guan2018said">(<a href="#ref-guan2018said" role="doc-biblioref">Guan et al. 2018</a>)</span> va chercher à trouver un “véritable” diagnostic, que l’on utilisera ensuite pour entraîner notre modèle.</p>
 </section>
@@ -343,7 +342,7 @@ Remarque
 </section>
 <section id="implémentation-avec-peerannot" class="level2" data-number="2">
 <h2 data-number="2" class="anchored" data-anchor-id="implémentation-avec-peerannot"><span class="header-section-number">2</span> Implémentation avec Peerannot</h2>
-<p>Il est temps de mettre en pratique ce que nous avons appris pour l’intégrer dans la librairie Peerannot.</p>
+<p>Il est temps de mettre en pratique ce que nous avons appris pour l’intégrer dans la librairie <span class="citation" data-cites="peerannot">(<a href="#ref-peerannot" role="doc-biblioref">Lefort, n.d.</a>)</span>.</p>
 <section id="présentation-de-peerannot" class="level3" data-number="2.1">
 <h3 data-number="2.1" class="anchored" data-anchor-id="présentation-de-peerannot"><span class="header-section-number">2.1</span> Présentation de Peerannot</h3>
 <p>L’objectif principal de Peerannot et d’aider à la gestion de labels crowdsoucé dans des problèmes de classficiation. Il va permettre notamment de définir un format “standard” de dataset de crowdsourcing, pour pouvoir faciliter leur utilisation dès lors que nous voulons effectuer différentes stratégies d’apprentissage et ceux sans devoir recoder de nouveaux algorithmes pour chaque dataset.</p>
@@ -401,10 +400,10 @@ Attention
 <p>De ce graphique, on déduit deux choses :</p>
 <ul>
 <li><p>il n’est pas nécessaire d’aller au delà de 100 epochs pour mieux apprendre</p></li>
-<li><p><code>Net</code> (celui avec juste la couche <code>model.fc</code>) possède une performance quasiment équivalente à <code>Net2</code> qui demande plus de paramètres à estimer.(PAS CONVAINCU EN DISCUTER)</p></li>
+<li><p><code>Net</code> (celui avec juste la couche <code>model.fc</code>) possède une performance quasiment équivalente à <code>Net2</code> qui demande plus de paramètres à estimer.</p></li>
 </ul>
 <p>Nous avons donc toutes nos informations pour pouvoir entraîner nos modèles correctement.</p>
-<p>Or, nous remarquons que avec <code>peerannot</code>, le format du <code>.json</code> des labels n’est pas adapté à l’entraînement de nos experts. Nous allons donc devoir faire tout un travail de mise en place des datasets et les codes correspondant se trouverons dans le fichier <code>setup_datasets.py</code>. Ainsi, une fois le dataset prêt, nous avons entraîné chaque modèle tout un week-end et nous les avons enregistrés dans un dossier appelé <code>expert_models</code>. Voici le code pour l’entraînement (seulement):</p>
+<p>Or, nous remarquons qu’avec <code>peerannot</code>, le format du <code>.json</code> des labels n’est pas adapté à l’entraînement de nos experts. Nous allons donc devoir faire tout un travail de mise en place des datasets et les codes correspondant se trouverons dans le fichier <code>setup_datasets.py</code>. Ainsi, une fois le dataset prêt, nous avons entraîné chaque modèle tout un week-end et nous les avons enregistrés dans un dossier appelé <code>expert_models</code>. Voici le code pour l’entraînement (seulement):</p>
 <div class="cell" data-execution_count="2">
 <div class="sourceCode cell-code" id="cb2"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb2-1"><a href="#cb2-1" aria-hidden="true" tabindex="-1"></a><span class="co"># dataset_all est une liste de dataset adapté pour </span></span>
 <span id="cb2-2"><a href="#cb2-2" aria-hidden="true" tabindex="-1"></a><span class="co"># l'entraînement de chaque modèle</span></span>
@@ -426,14 +425,14 @@ Attention
 <span id="cb2-18"><a href="#cb2-18" aria-hidden="true" tabindex="-1"></a></span>
 <span id="cb2-19"><a href="#cb2-19" aria-hidden="true" tabindex="-1"></a><span class="bu">print</span>(<span class="st">"Tout le monde est entrainé !"</span>)</span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>On voit dans le code précédent un test avant le chargement du Dataset pour savoir si on entraîne les modèles avec des min-batches de taille 30 ou 32. En réalité, il se trouve que pour certains experts, le dernier mini-batch était de taille 1 ce qui entraîner une erreur pendant l’entraînement. Dès lors, voila ce qu’affiche le terminal :</p>
+<p>On voit dans le code précédent un test avant le chargement du Dataset pour savoir si on entraîne les modèles avec des min-batches de taille 30 ou 32. En réalité, il se trouve que pour certains experts, le dernier mini-batch était de taille 1 ce qui entraînait une erreur pendant l’entraînement. Dès lors, voila ce qu’affiche le terminal :</p>
 <pre class="{bash}"><code>ValueError: Expected more than 1 value per channel when training, got input size torch.Size([1, 512, 1, 1])</code></pre>
 <p>Cette erreur provient de (avec BN1 ça marche pas, problème avec le calcul de l’écart-type ?)</p>
 </section>
 <section id="entraînement-des-poids" class="level4" data-number="2.4.2">
 <h4 data-number="2.4.2" class="anchored" data-anchor-id="entraînement-des-poids"><span class="header-section-number">2.4.2</span> Entraînement des poids</h4>
-<p>Une fois que tous nos modèles sont bien enregistrer, il est temps de mettre en place l’entraînement de nos poids. Il a fallu d’abord créer un dataset comprenant l’image et la distribution associée à l’aide des votes des experts : nous avons accès facilement à ses information avec le format des dataset de <code>peerannot</code>. Toutes les fonctions utilisées pour construire le dataset est bien sur dans <code>setup_datasets.py</code>.</p>
-<p>Un fois que nous avons le dataset, la première idée a été de charger tous les modèles dans une liste pour pouvoir ensuite appelé facilement ces derniers. Cependant, cela revenait à charger 2571 modèles et au bout du <span class="math inline">480^e</span> modèle, le terminal nous a affiché cette erreur :</p>
+<p>Une fois que tous nos modèles sont bien enregistrés, il est temps de mettre en place l’entraînement de nos poids. Il a fallu d’abord créer un dataset comprenant l’image et la distribution associée à l’aide des votes des experts : nous avons accès facilement à ses information avec le format des datasets de <code>peerannot</code>. Toutes les fonctions utilisées pour construire le dataset est bien sûr dans <code>setup_datasets.py</code>.</p>
+<p>Un fois que nous avons le dataset, la première idée a été de charger tous les modèles dans une liste pour pouvoir ensuite appeler facilement ces derniers. Cependant, cela revenait à charger 2571 modèles et au bout du <span class="math inline">480^e</span> modèle, le terminal nous a affiché cette erreur :</p>
 <pre class="{bash}"><code>outofmemoryerror: cuda out of memory. tried to allocate 20.00 mib (gpu 0; 22.03 gib total capacity; 21.26 gib already allocated; 18.88 mib free; 21.36 gib reserved in total by pytorch) if reserved memory is &gt;&gt; allocated memory try setting max_split_size_mb to avoid fragmentation. see documentation for memory management and pytorch_cuda_alloc_conf</code></pre>
 <p>La mémoire nécessaire pour charger tous les modèles en même temps était trop importante pour le GPU, il a donc fallu changer de stratégie.</p>
 <p>Ainsi, nous avons commencé par charger un modèle uniquement lorsqu’on en a besoin pour effectuer des calculs, seulement, cette méthode aussi était trop couteuse en mémoire.</p>
@@ -464,7 +463,7 @@ Attention
 <p>(les paramètres sont chargés dans la fonction <code>worker_pred</code> situé dans le module <code>models.py</code>).</p>
 <p>Mais à ce moment là, une autre erreur a fait surface :</p>
 <pre class="{bash}"><code>RuntimeError: one of the variables needed for gradient computation has been modified by an inplace operation: [torch.cuda.FloatTensor [10]], which is output 0 of AsStridedBackward0, is at version 1666; expected version 1665 instead. Hint: enable anomaly detection to find the operation that failed to compute its gradient, with torch.autograd.set_detect_anomaly(True).</code></pre>
-<p>Il nous étais impossible de calculer le gradient (et donc fait la backpropagation…). On a du modifier la structure du code pour pouvoir nous permettre ce calcul primordial. Puis une nouvelle fois un problème de mémoire sur le GPU est arrivé, on a donc du rajouter trois lignes de code à la fin du calcul des prédictions pour supprimer le modèle et nettoyer la mémoire du GPU pour retirer toute trace éventuelle. Nous obtenons le code suivant :</p>
+<p>Il nous était impossible de calculer le gradient (et donc fait la backpropagation…). On a du modifier la structure du code pour pouvoir nous permettre ce calcul primordial. Puis une nouvelle fois un problème de mémoire sur le GPU est arrivé, on a donc du rajouter trois lignes de code à la fin du calcul des prédictions pour supprimer le modèle et nettoyer la mémoire du GPU pour retirer toute trace éventuelle. Nous obtenons le code suivant :</p>
 <div class="cell" data-execution_count="4">
 <div class="sourceCode cell-code" id="cb7"><pre class="sourceCode python code-with-copy"><code class="sourceCode python"><span id="cb7-1"><a href="#cb7-1" aria-hidden="true" tabindex="-1"></a>tot_worker <span class="op">=</span> <span class="bu">list</span>(t.keys())</span>
 <span id="cb7-2"><a href="#cb7-2" aria-hidden="true" tabindex="-1"></a>w <span class="op">=</span> torch.ones(n_worker, dtype<span class="op">=</span>torch.<span class="bu">float</span>, requires_grad<span class="op">=</span><span class="va">True</span>) <span class="op">/</span> n_worker</span>
@@ -493,7 +492,7 @@ Attention
 <span id="cb7-25"><a href="#cb7-25" aria-hidden="true" tabindex="-1"></a>    <span class="co"># l'article ne précise pas si il faut softmax les poids </span></span>
 <span id="cb7-26"><a href="#cb7-26" aria-hidden="true" tabindex="-1"></a>    <span class="co"># pendant la boucle ou à la fin.</span></span></code><button title="Copy to Clipboard" class="code-copy-button"><i class="bi"></i></button></pre></div>
 </div>
-<p>Finalement, le problème le plus embêtant est celui que l’on obtient avec ce code : le temps de calcul. Il semblerait que dans cette configuration, l’entraînement des poids pour seulement une epoch va durer 11 jours ! Le stage sera terminer avant la fin de la deuxième epoch. J’ai donc tenter de contourné le problème en ne solicitant qu’un sous ensemble (déterminé aléatoirement pour chaque mini-batch) des modèles pour réduire le temps de calcul. Le code final est donc celui-ci :</p>
+<p>Finalement, le problème le plus embêtant est celui que l’on obtient avec ce code : le temps de calcul. Il semblerait que dans cette configuration, l’entraînement des poids pour seulement une epoch va durer 11 jours ! Le stage sera terminé avant la fin de la deuxième epoch. J’ai donc tenter de contourné le problème en ne solicitant qu’un sous ensemble (déterminé aléatoirement pour chaque mini-batch) des modèles pour réduire le temps de calcul. Le code final est donc celui-ci :</p>
 <div class="cell" data-execution_count="5">
 <details>
 <summary>Voir le modèle</summary>
@@ -546,18 +545,53 @@ Attention
 </section>
 <section id="comparaison-des-performances" class="level3" data-number="2.5">
 <h3 data-number="2.5" class="anchored" data-anchor-id="comparaison-des-performances"><span class="header-section-number">2.5</span> Comparaison des performances</h3>
-<p>Après avoir entraîner nos poids, nous allons pouvoir comparer la méthode d’agrégation avec d’autres stratégies. Le package <code>peerannot</code> a déjà plusieurs stratégies disponibles notamment la plus rudimentaire : le vote majoritaire.</p>
+<p>Après avoir entraîner nos poids, nous allons pouvoir comparer la méthode d’agrégation avec d’autres stratégies. Le package <code>peerannot</code> a déjà plusieurs stratégies disponibles notamment les plus rudimentaires : le vote majoritaire et l’expert moyen.</p>
+<p>On se met dans un cas restreint, où nous allons utiliser seulement 200 modèles sur les 2571 entrainés, et faire le calcul des stratégies à l’aide de ces derniers. Voici le tableau obtenu :</p>
+<table class="table">
+<thead>
+<tr class="header">
+<th>Méthode</th>
+<th>Vote majoritaire</th>
+<th>Expert moyen</th>
+<th><span class="citation" data-cites="guan2018said">(<a href="#ref-guan2018said" role="doc-biblioref">Guan et al. 2018</a>)</span></th>
+</tr>
+</thead>
+<tbody>
+<tr class="odd">
+<td>Précision</td>
+<td>10%</td>
+<td>10%</td>
+<td>10%</td>
+</tr>
+</tbody>
+</table>
+<p>On voit ici que les résultats ne sont pas très intéressants et sont inexploitables dans la mesure où même le vote majoritaire possède un taux de précision beaucoup trop faible.</p>
 </section>
 </section>
 <section id="conclusion-et-perspectives" class="level2" data-number="3">
 <h2 data-number="3" class="anchored" data-anchor-id="conclusion-et-perspectives"><span class="header-section-number">3</span> Conclusion et perspectives</h2>
-<p>Notre modèle est donc ?</p>
+<p>Avec de telles résultats, nous ne pouvons donc pas conclure grand chose de la méthode de <span class="citation" data-cites="guan2018said">(<a href="#ref-guan2018said" role="doc-biblioref">Guan et al. 2018</a>)</span>. Le manque de temps ne permettra pas de pouvoir produire de résultats intéressants, même si il est sûrement possible de les améliorer et d’enfin pouvoir les comparer sérieusement.</p>
+<p>On aurait pu :</p>
+<ul>
+<li>améliorer nos modèles d’expert en utilisant une variante de la méthode de <span class="citation" data-cites="mnih2012learning">(<a href="#ref-mnih2012learning" role="doc-biblioref">Mnih and Hinton 2012</a>)</span></li>
+<li>utiliser un dataset avec des experts ayant votés plus de données (afin de mieux entrainer les modèles)</li>
+<li>avec ce nouveau dataset, ne pas geler les coefficients de <code>resnet18</code> pour augmenter la précision</li>
+<li>faire plus d’epochs sur le modèle des poids</li>
+</ul>
+<p>On pourrait également améliorer encore le modèle en faisant la version <span class="math inline">IWDN</span> de <span class="citation" data-cites="guan2018said">(<a href="#ref-guan2018said" role="doc-biblioref">Guan et al. 2018</a>)</span> permettant aux poids d’apprendre en tant que fonction de l’image. Cela aurait permis de prendre en compte la difficulté de celle-ci.</p>
+<p>Au final, la seule conclusion ‘raisonnable’ que nous puissions faire et que la stratégie est au moins aussi performante que le vote majoritaire (ce qui est la moindre des choses).</p>
 
 </section>
 
 <div id="quarto-appendix" class="default"><section class="quarto-appendix-contents" role="doc-bibliography"><h2 class="anchored quarto-appendix-heading">References</h2><div id="refs" class="references csl-bib-body hanging-indent" role="list">
 <div id="ref-guan2018said" class="csl-entry" role="listitem">
 Guan, Melody Y., Varun Gulshan, Andrew M. Dai, and Geoffrey E. Hinton. 2018. <span>“Who Said What: Modeling Individual Labelers Improves Classification.”</span> <a href="https://arxiv.org/abs/1703.08774">https://arxiv.org/abs/1703.08774</a>.
+</div>
+<div id="ref-peerannot" class="csl-entry" role="listitem">
+Lefort, Tanguy. n.d. <span>“Peerannot.”</span> <a href="https://tanglef.github.io" class="uri">https://tanglef.github.io</a>.
+</div>
+<div id="ref-mnih2012learning" class="csl-entry" role="listitem">
+Mnih, Volodymyr, and Geoffrey E Hinton. 2012. <span>“Learning to Label Aerial Images from Noisy Data.”</span> In <em>Proceedings of the 29th International Conference on Machine Learning (ICML-12)</em>, 567–74.
 </div>
 </div></section></div></main>
 <!-- /main column -->
